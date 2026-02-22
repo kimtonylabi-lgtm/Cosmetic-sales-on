@@ -108,7 +108,7 @@ function IntakeCard({
 
             {item.note && (
                 <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-5 leading-relaxed bg-slate-50/50 dark:bg-slate-800/30 p-2 rounded-lg italic">
-                    "{item.note}"
+                    &quot;{item.note}&quot;
                 </p>
             )}
 

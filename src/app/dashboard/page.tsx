@@ -121,7 +121,7 @@ export default function DashboardPage() {
                         <div className="relative z-10">
                             <h4 className="text-lg font-bold">AI 분석 리포트</h4>
                             <p className="text-sm text-ocean-light/80 mt-2 leading-relaxed">
-                                이번 달 '샘플 요청'이 지난 달 대비 24% 증가했습니다. 생산 라인 부하를 확인하세요.
+                                이번 달 &apos;샘플 요청&apos;이 지난 달 대비 24% 증가했습니다. 생산 라인 부하를 확인하세요.
                             </p>
                             <button className="mt-6 flex items-center gap-2 text-sm font-bold group-hover:gap-3 transition-all">
                                 자세히 읽기 <ArrowUpRight className="w-4 h-4" />
