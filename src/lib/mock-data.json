@@ -1,0 +1,69 @@
+{
+    "news": [
+        {
+            "id": 1,
+            "title": "B2B 화장품 솔루션 'COSMETIC SALES ON' 런칭",
+            "date": "2026-02-22"
+        },
+        {
+            "id": 2,
+            "title": "2025 K-Beauty 글로벌 수출액 역대 최고치 경신",
+            "date": "2026-02-21"
+        },
+        {
+            "id": 3,
+            "title": "친환경 용기 제조사 '삼화', 종이 튜브 개발 성공",
+            "date": "2026-02-20"
+        }
+    ],
+    "trends": [
+        {
+            "id": 1,
+            "title": "Skin Streaming",
+            "description": "스킨케어 단계의 극단적인 간소화 트렌드",
+            "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1000&auto=format&fit=crop"
+        },
+        {
+            "id": 2,
+            "title": "Blue Beauty",
+            "description": "해양 생태계 보존을 위한 친환경 패키징",
+            "image": "https://images.unsplash.com/photo-1590439474475-9618622f3ca1?q=80&w=1000&auto=format&fit=crop"
+        }
+    ],
+    "manufacturers": {
+        "packaging": [
+            {
+                "name": "삼화",
+                "update": "재활용 가능한 알루미늄 펌프 출시"
+            },
+            {
+                "name": "연우",
+                "update": "친환경 에코리스 펌프 양산 체계 구축"
+            }
+        ],
+        "oem": [
+            {
+                "name": "한국콜마",
+                "update": "AI 기반 맞춤형 화장품 플랫폼 상용화"
+            },
+            {
+                "name": "코스맥스",
+                "update": "마이크로바이옴 신제형 특허 취득"
+            }
+        ]
+    },
+    "exhibitions": [
+        {
+            "id": 1,
+            "name": "Cosmoprof Worldwide Bologna 2026",
+            "date": "2026-03-20",
+            "location": "Italy"
+        },
+        {
+            "id": 2,
+            "name": "K-Beauty Expo Korea 2026",
+            "date": "2026-10-15",
+            "location": "South Korea"
+        }
+    ]
+}
