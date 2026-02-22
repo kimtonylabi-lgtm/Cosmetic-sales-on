@@ -19,7 +19,10 @@
 - **State Management:**
   - Server State: Tanstack Query (React Query)
   - Client State: Zustand
-- **Database/ORM:** Supabase (PostgreSQL), Prisma ORM [3].
+- **Database/ORM:** Database: Firebase Firestore (NoSQL Document Database)
+Authentication: Firebase Auth (Built-in)
+Storage: Cloudinary (이미지 및 파일 저장용)
+SDK: Firebase Admin SDK (서버 측) / Firebase Client SDK (클라이언트 측)
 - **AI Agent Integration:** Google Antigravity 에이전트 워크플로(.agent/rules, .agent/skills) 적극 활용 [11, 12].
 - **Hard Constraints (금지 사항):**
   - "Pages Router 사용 절대 금지 (오직 App Router만 사용)"

@@ -11,15 +11,27 @@ export const metadata: Metadata = {
   keywords: ["뷰티 B2B", "화장품 제조", "OEM", "ODM", "영업 통합 관리", "CRM", "ERP"],
 };
 
+import { ThemeProvider } from "@/components/shared/ThemeProvider";
+import QueryProvider from "@/components/providers/QueryProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="scroll-smooth">
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased text-black bg-white selection:bg-black selection:text-white`}>
-        {children}
+    <html lang="ko" className="scroll-smooth" suppressHydrationWarning>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased text-black bg-white dark:text-white dark:bg-slate-950 selection:bg-black selection:text-white`}>
+        <QueryProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 import { useAuth } from "@/lib/firebase/auth";
-import { getDocument, UserProfile } from "@/lib/firebase/db";
+import { getDocument } from "@/lib/firebase/db";
+import type { UserProfile } from "@/lib/firebase/db";
 import { useState, useEffect } from "react";
 
 export const useUserRole = () => {
@@ -9,33 +10,15 @@ export const useUserRole = () => {
 
     useEffect(() => {
         const fetchProfile = async () => {
-            if (user) {
-                const data = await getDocument("users", user.uid);
-                if (data) {
-                    setProfile(data as UserProfile);
-                } else {
-                    setProfile({
-                        uid: user.uid,
-                        email: user.email,
-                        displayName: user.displayName,
-                        photoURL: user.photoURL,
-                        role: 'Admin', // Default to Admin for first user
-                        team: 'Sales',
-                        createdAt: null as any
-                    });
-                }
-            } else {
-                // DEV BYPASS: Allow viewing dashboard without login for now
-                setProfile({
-                    uid: 'dev-user',
-                    email: 'dev@example.com',
-                    displayName: 'Dev User',
-                    photoURL: null,
-                    role: 'Admin',
-                    team: 'Sales',
-                    createdAt: null as any
-                });
+            if (!user) {
+                // 로그인되지 않은 경우 - AuthGuard가 리다이렉트 처리
+                setProfile(null);
+                setLoading(false);
+                return;
             }
+
+            const data = await getDocument<UserProfile>("users", user.uid);
+            setProfile(data);
             setLoading(false);
         };
 
@@ -45,10 +28,11 @@ export const useUserRole = () => {
     }, [user, authLoading]);
 
     const isAdmin = profile?.role === 'Admin';
-    const isManager = profile?.role === 'Manager' || isAdmin;
-    const isSalesTeam = profile?.team === 'Sales';
-    const isSampleTeam = profile?.team === 'Sample';
-    const isSupportTeam = profile?.team === 'Support';
+    const isManager = isAdmin; // Admin은 모든 권한 포함
+    const isSalesTeam = profile?.team === 'Sales' || isAdmin;
+    const isSampleTeam = profile?.team === 'Sample' || isAdmin;
+    const isSupportTeam = profile?.team === 'Support' || isAdmin;
+    const isDeptHead = profile?.isDeptHead === true;
 
     return {
         profile,
@@ -57,6 +41,7 @@ export const useUserRole = () => {
         isManager,
         isSalesTeam,
         isSampleTeam,
-        isSupportTeam
+        isSupportTeam,
+        isDeptHead,
     };
 };
