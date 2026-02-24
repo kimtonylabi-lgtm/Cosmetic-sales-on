@@ -22,6 +22,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getAllDocuments, MasterRawMaterial, MasterInjectionRate } from "@/lib/firebase/db";
 import { Calculator, Save, AlertCircle } from "lucide-react";
+import { logActivity } from "@/lib/logger";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface DetailedCostCalcSheetProps {
     open: boolean;
@@ -34,6 +36,7 @@ interface DetailedCostCalcSheetProps {
 }
 
 export function DetailedCostCalcSheet({ open, onOpenChange, onApply, initialData }: DetailedCostCalcSheetProps) {
+    const { profile } = useUserRole();
     // ─── 마스터 데이터 상태 ──────────────────────────────────────────
     const [rawMaterials, setRawMaterials] = useState<MasterRawMaterial[]>([]);
     const [injectionRates, setInjectionRates] = useState<MasterInjectionRate[]>([]);
@@ -171,6 +174,22 @@ export function DetailedCostCalcSheet({ open, onOpenChange, onApply, initialData
         }
 
         const baseMaterial = selectedMaterial.split(" ")[0];
+
+        // 활동 로그 기록
+        if (profile) {
+            logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                "원가 산출 완료",
+                `${baseMaterial} 재질에 대한 상세 원가(${results.totalPrice.toLocaleString()}원)를 산출하여 적용했습니다.`,
+                "System",
+                {
+                    material: selectedMaterial,
+                    unitPrice: results.totalPrice,
+                    weight,
+                    quantity
+                }
+            );
+        }
 
         onApply({
             unitPrice: Math.round(results.totalPrice * 100) / 100,

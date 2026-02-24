@@ -14,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { cn } from "@/lib/utils";
 import { useBomMaster } from "@/lib/hooks/useBomMaster";
+import { useUserRole } from "@/hooks/useUserRole";
+import { logActivity } from "@/lib/logger";
 
 // ─── 유틸 ────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<QuoteStatus, string> = {
@@ -265,6 +267,7 @@ function MoqInput({ value, onChange }: { value: string; onChange: (v: string) =>
 
 // ─── 메인 페이지 ─────────────────────────────────────────────────
 export default function SalesQuotesPage() {
+    const { profile } = useUserRole();
     const { bulkSaveToMaster, getSuggestions } = useBomMaster();
     const [quotes, setQuotes] = useState<Quote[]>(MOCK_QUOTES);
     const [previewQuote, setPreviewQuote] = useState<Quote | null>(null);
@@ -291,7 +294,7 @@ export default function SalesQuotesPage() {
     const priceTotal = calcTotal(editItems);
 
 
-    const handleSave = () => {
+    const handleSave = async () => {
         bulkSaveToMaster({ 발주처: [customerName], 제품명: [productName] });
         editItems.forEach((item) => {
             bulkSaveToMaster({
@@ -308,6 +311,18 @@ export default function SalesQuotesPage() {
             productName, moq, status: "작성중", items: editItems, note,
             createdAt: new Date().toISOString().slice(0, 10), validUntil,
         };
+
+        // 활동 로그 기록
+        if (profile) {
+            await logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                "견적 생성",
+                `${customerName || "미입력"} 대상 ${productName || "상품"} 견적서(${newQuote.quoteNo})를 작성했습니다.`,
+                "System",
+                { quoteId: newQuote.id, amount: priceTotal }
+            );
+        }
+
         setQuotes((p) => [newQuote, ...p]);
         setIsCreateOpen(false);
     };

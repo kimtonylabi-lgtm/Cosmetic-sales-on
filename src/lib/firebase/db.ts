@@ -6,8 +6,10 @@ import {
     getDocs,
     query,
     where,
+    orderBy,
     updateDoc,
     deleteDoc,
+    addDoc,
     serverTimestamp,
     Timestamp
 } from "firebase/firestore";
@@ -16,6 +18,8 @@ import { db } from "./config";
 // ─── 사용자 역할 & 팀 타입 ───────────────────────────────────────
 export type UserRole = 'Admin' | 'Member';
 export type UserTeam = 'Sales' | 'Sample' | 'Support';
+
+// (중략 - 타입 정의들)
 
 // ─── 마스터 데이터 타입 ──────────────────────────────────────────
 export interface MasterRawMaterial {
@@ -101,8 +105,103 @@ export interface Interaction {
     createdAt: Timestamp;
 }
 
-// ─── 범용 CRUD 헬퍼 ──────────────────────────────────────────────
-import { addDoc } from "firebase/firestore";
+// ─── 활동 로그 (WorkLog) ──────────────────────────────────────────
+export type WorkLogCategory = 'System' | 'Manual';
+
+export interface WorkLog {
+    id: string;
+    userId: string;
+    userName: string;
+    team: UserTeam;
+    category: WorkLogCategory;
+    action: string;      // 예: '견적 생성', '주문 확정'
+    content: string;     // 상세 내용 요약
+    metadata?: Record<string, any>;
+    createdAt: Timestamp;
+}
+
+// ─── 보고서 (Report) ──────────────────────────────────────────────
+export type ReportType = 'DAILY' | 'WEEKLY';
+export type ReportStatus = 'TEMP' | 'FINAL';
+
+export interface Report {
+    id: string;
+    userId: string;
+    userName: string;
+    team: UserTeam;
+    type: ReportType;
+    targetDate: string;  // '2026-02-24'
+    content: string;     // AI 생성 본문 (Markdown)
+    summary: string;     // 핵심 요약
+    status: ReportStatus;
+    feedback?: string;   // 부서장 피드백
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+}
+
+/**
+ * 특정 사용자의 활동 로그를 조회합니다.
+ */
+export const queryWorkLogs = async (userId: string, team?: UserTeam): Promise<WorkLog[]> => {
+    try {
+        let q = query(
+            collection(db, "workLogs"),
+            where("userId", "==", userId)
+            // 인덱스 전파 지연으로 인해 정렬 제거
+        );
+
+        if (team && !userId) {
+            q = query(
+                collection(db, "workLogs"),
+                where("team", "==", team)
+            );
+        }
+
+        const querySnapshot = await getDocs(q);
+        const logs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkLog));
+
+        // 데이터가 표시되도록 클라이언트 사전 정렬
+        return logs.sort((a, b) => {
+            const timeA = (a.createdAt as any)?.seconds || 0;
+            const timeB = (b.createdAt as any)?.seconds || 0;
+            return timeB - timeA;
+        });
+    } catch (error) {
+        console.error("QueryWorkLogs Error:", error);
+        throw error;
+    }
+};
+
+/**
+ * 특정 사용자의 보고서를 조회합니다.
+ */
+export const queryReports = async (userId: string, team?: UserTeam): Promise<Report[]> => {
+    try {
+        let q = query(
+            collection(db, "reports"),
+            where("userId", "==", userId)
+        );
+
+        if (team && !userId) {
+            q = query(
+                collection(db, "reports"),
+                where("team", "==", team)
+            );
+        }
+
+        const querySnapshot = await getDocs(q);
+        const reports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Report));
+
+        return reports.sort((a, b) => {
+            const timeA = (a.createdAt as any)?.seconds || 0;
+            const timeB = (b.createdAt as any)?.seconds || 0;
+            return timeB - timeA;
+        });
+    } catch (error) {
+        console.error("QueryReports Error:", error);
+        throw error;
+    }
+};
 
 export const createDocument = async <T extends object>(
     collectionName: string,

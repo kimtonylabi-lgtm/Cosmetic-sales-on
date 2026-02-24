@@ -12,6 +12,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { OrderBomBlock, OrderBomBlockMeta, INITIAL_ORDER_BOM_META } from "./OrderBomBlock";
 import { cn } from "@/lib/utils";
 import { useCallback } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { logActivity } from "@/lib/logger";
 
 const STATUS_STYLE: Record<OrderStatus, string> = {
     검토중: "bg-slate-500/15 text-slate-400 border-slate-500/30",
@@ -26,6 +28,7 @@ type SortKey = "orderNo" | "amount" | "confirmedAt" | "deliveryDue";
 type SortDir = "asc" | "desc";
 
 export default function SalesOrdersPage() {
+    const { profile } = useUserRole();
     const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -60,8 +63,22 @@ export default function SalesOrdersPage() {
     const totalAmount = filtered.reduce((s, o) => s + o.amount, 0);
 
     // ─── 견적 → 수주 원클릭 (데모: 상태 검토중 → 확정) ─────────
-    const confirmOrder = (id: string) =>
+    const confirmOrder = async (id: string) => {
+        const order = orders.find(o => o.id === id);
+        if (!order) return;
+
         setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: "확정" } : o));
+
+        if (profile) {
+            await logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                "수주 확정",
+                `${order.customerName}의 ${order.productName} 수주(${order.orderNo})를 확정했습니다.`,
+                "System",
+                { orderId: id, amount: order.amount }
+            );
+        }
+    };
 
     const SortIcon = ({ k }: { k: SortKey }) =>
         sortKey === k

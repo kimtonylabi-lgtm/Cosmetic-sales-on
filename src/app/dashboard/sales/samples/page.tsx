@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SampleRequestForm } from "./SampleRequestForm";
+import { logActivity } from "@/lib/logger";
+import { useUserRole } from "@/hooks/useUserRole";
 
 // ─── 상태 색상 ────────────────────────────────────────────────────
 const STATUS_COLOR: Record<SampleStatus, string> = {
@@ -185,6 +187,7 @@ function SampleCard({ req }: { req: SampleRequest }) {
 
 // ─── 메인 페이지 ─────────────────────────────────────────────────
 export default function SalesSamplesPage() {
+    const { profile } = useUserRole();
     const [requests, setRequests] = useState<SampleRequest[]>(MOCK_SAMPLE_REQUESTS);
     const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -196,10 +199,27 @@ export default function SalesSamplesPage() {
             id: `s${Date.now()}`,
             requestNo: `SR-2026-${String(requests.length + 22).padStart(4, "0")}`,
             requestedAt: new Date().toISOString().slice(0, 10),
-            requestedBy: "현재 사용자",
+            requestedBy: profile?.displayName || "현재 사용자",
             status: "대기",
             ...newData,
         };
+
+        // 활동 로그 기록
+        if (profile) {
+            logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                "샘플 요청 생성",
+                `${newData.customerName}의 ${newData.productName} 샘플 요청(${newItem.requestNo})을 생성했습니다.`,
+                "System",
+                {
+                    requestNo: newItem.requestNo,
+                    productName: newData.productName,
+                    quantity: newData.quantity,
+                    sampleKind: newData.sampleKind
+                }
+            );
+        }
+
         setRequests((prev) => [newItem, ...prev]);
     };
 

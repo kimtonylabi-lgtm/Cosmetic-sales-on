@@ -173,6 +173,13 @@ export const Sidebar = () => {
                         isCollapsed={isCollapsed}
                     />
                     <SidebarItem
+                        icon={FileText}
+                        label="AI 보고서"
+                        href="/dashboard/reports"
+                        isActive={pathname === '/dashboard/reports'}
+                        isCollapsed={isCollapsed}
+                    />
+                    <SidebarItem
                         icon={ClipboardList}
                         label="내 할일"
                         href="/dashboard/tasks"

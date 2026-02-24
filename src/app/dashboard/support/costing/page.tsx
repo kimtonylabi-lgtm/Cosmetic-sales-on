@@ -129,7 +129,43 @@ function CostRow({ item, index }: { item: CostBreakdown; index: number }) {
 
 // ─── 메인 페이지 ─────────────────────────────────────────────────
 import { DetailedCostCalcSheet } from "./DetailedCostCalcSheet";
-import { Calculator, Plus } from "lucide-react";
+import {
+    Calculator,
+    Plus,
+    ArrowUpRight,
+    Percent,
+    Package as PackageIcon,
+    Coins
+} from "lucide-react";
+
+function SummaryCard({ title, value, subValue, icon: Icon, trend, color }: any) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm"
+        >
+            <div className="flex items-center justify-between mb-3">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", color)}>
+                    <Icon className="w-5 h-5" />
+                </div>
+                {trend && (
+                    <div className={cn(
+                        "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full",
+                        trend > 0 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" : "bg-red-50 text-red-600 dark:bg-red-950/30"
+                    )}>
+                        {trend > 0 ? "↑" : "↓"} {Math.abs(trend)}%
+                    </div>
+                )}
+            </div>
+            <p className="text-xs font-medium text-slate-400 mb-1">{title}</p>
+            <div className="flex items-baseline gap-2">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{value}</h3>
+                {subValue && <span className="text-xs text-slate-400 font-medium">{subValue}</span>}
+            </div>
+        </motion.div>
+    );
+}
 
 export default function SupportCostingPage() {
     const [isCalcOpen, setIsCalcOpen] = useState(false);
@@ -165,90 +201,159 @@ export default function SupportCostingPage() {
                 </div>
             </div>
 
-            {/* 차트 카드 */}
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm"
-            >
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-teal-600" />
-                    </div>
-                    <div>
-                        <h2 className="text-sm font-bold text-slate-800 dark:text-white">
-                            원부자재 단가 &amp; 마진율 추이
-                        </h2>
-                        <p className="text-xs text-slate-400">최근 6개월 기준</p>
-                    </div>
-                </div>
+            {/* 통계 카드 섹션 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <SummaryCard
+                    title="평균 마진율"
+                    value="18.5%"
+                    subValue="전체 제품 기준"
+                    icon={Percent}
+                    trend={2.4}
+                    color="bg-teal-500/10 text-teal-600"
+                />
+                <SummaryCard
+                    title="총 제조 원가"
+                    value="₩124.5M"
+                    subValue="이번 달 누적"
+                    icon={Coins}
+                    trend={-1.2}
+                    color="bg-blue-500/10 text-blue-600"
+                />
+                <SummaryCard
+                    title="분석 대상 제품"
+                    value={`${COST_BREAKDOWN_DATA.length}개`}
+                    subValue="활성 관리 중"
+                    icon={PackageIcon}
+                    color="bg-purple-500/10 text-purple-600"
+                />
+                <SummaryCard
+                    title="원자재 가격 지수"
+                    value="104.2"
+                    subValue="전월 대비"
+                    icon={ArrowUpRight}
+                    trend={5.1}
+                    color="bg-amber-500/10 text-amber-600"
+                />
+            </div>
 
-                <ResponsiveContainer width="100%" height={320}>
-                    <ComposedChart data={MATERIAL_TREND_DATA} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis
-                            dataKey="month"
-                            tick={{ fontSize: 11, fill: "#94a3b8" }}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            yAxisId="left"
-                            tick={{ fontSize: 11, fill: "#94a3b8" }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
-                        />
-                        <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            tick={{ fontSize: 11, fill: "#94a3b8" }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(v) => `${v}%`}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "16px" }} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* 차트 카드 (2/3 영역) */}
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col"
+                >
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                                <BarChart3 className="w-5 h-5 text-teal-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-bold text-slate-800 dark:text-white">
+                                    원부자재 단가 &amp; 마진율 추이
+                                </h2>
+                                <p className="text-xs text-slate-400">최근 6개월 기준</p>
+                            </div>
+                        </div>
+                    </div>
 
-                        {/* 원자재 단가 막대 */}
-                        <Bar yAxisId="left" dataKey="rawMaterial" name="원자재 단가(원/kg)" radius={[4, 4, 0, 0]}>
-                            {MATERIAL_TREND_DATA.map((entry, index) => (
-                                <Cell
-                                    key={`cell-${index}`}
-                                    fill={entry.marginRate < 0 ? "#fca5a5" : "#99f6e4"}
+                    <div className="flex-1 min-h-[320px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={MATERIAL_TREND_DATA} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                <XAxis
+                                    dataKey="month"
+                                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                                    axisLine={false}
+                                    tickLine={false}
                                 />
-                            ))}
-                        </Bar>
+                                <YAxis
+                                    yAxisId="left"
+                                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
+                                />
+                                <YAxis
+                                    yAxisId="right"
+                                    orientation="right"
+                                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tickFormatter={(v) => `${v}%`}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: "12px", paddingBottom: "20px" }} />
 
-                        {/* 마진율 꺾은선 */}
-                        <Line
-                            yAxisId="right"
-                            type="monotone"
-                            dataKey="marginRate"
-                            name="마진율"
-                            strokeWidth={2.5}
-                            stroke="#0d9488"
-                            dot={<MarginDot />}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
+                                <Bar yAxisId="left" dataKey="rawMaterial" name="원자재 단가" radius={[4, 4, 0, 0]} barSize={32}>
+                                    {MATERIAL_TREND_DATA.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.marginRate < 0 ? "#fca5a5" : "#5eead4"}
+                                        />
+                                    ))}
+                                </Bar>
 
-                {/* 범례 보조 설명 */}
-                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <span className="w-3 h-3 rounded-sm bg-red-300 inline-block" />
-                        적자 구간 (마진율 &lt; 0%)
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="marginRate"
+                                    name="마진율"
+                                    strokeWidth={3}
+                                    stroke="#0d9488"
+                                    dot={<MarginDot />}
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                />
+                            </ComposedChart>
+                        </ResponsiveContainer>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <span className="w-3 h-3 rounded-sm bg-teal-200 inline-block" />
-                        정상 구간 (마진율 ≥ 0%)
+
+                    {/* 범례 보조 설명 */}
+                    <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                            <span className="w-2.5 h-2.5 rounded-sm bg-red-300 inline-block" />
+                            적자 구간
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                            <span className="w-2.5 h-2.5 rounded-sm bg-teal-200 inline-block" />
+                            정상 구간
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-red-500">
-                        <TrendingDown className="w-3.5 h-3.5" />
-                        마진율 음수 = 적자
+                </motion.div>
+
+                {/* 원원자재 급등 주의보 (1/3 영역) */}
+                <motion.div
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm"
+                >
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                            <AlertCircle className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <h2 className="text-sm font-bold text-slate-800 dark:text-white">시장 변동 주의보</h2>
                     </div>
-                </div>
-            </motion.div>
+
+                    <div className="space-y-4">
+                        <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">PP(폴리프로필렌) 가격 상승</p>
+                            <p className="text-[11px] text-amber-600/80 leading-relaxed">
+                                유가 변동으로 인해 다음 달 PP 단가가 약 7~10% 상승할 것으로 전망됩니다. 주요 제품의 원가 재산출을 권장합니다.
+                            </p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">환율 안정세</p>
+                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                수입 부자재의 경우 환율 하락으로 약 2.5%의 원가 절감 효과가 예상됩니다.
+                            </p>
+                        </div>
+                        <Button variant="outline" className="w-full text-xs h-9 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            상세 시장 동향 보기
+                        </Button>
+                    </div>
+                </motion.div>
+            </div>
 
             {/* 원가 구성 테이블 */}
             <motion.div

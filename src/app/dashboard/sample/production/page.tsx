@@ -15,6 +15,8 @@ import {
     FlaskConical,
     ClipboardList
 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { logActivity } from "@/lib/logger";
 import {
     MOCK_PRODUCTION_DATA,
     SampleProduction,
@@ -97,12 +99,26 @@ function FileDropZone({
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────
 export default function SampleProductionPage() {
+    const { profile } = useUserRole();
     const [productions, setProductions] = useState<SampleProduction[]>(MOCK_PRODUCTION_DATA);
     const [selected, setSelected] = useState<SampleProduction | null>(null);
     const [notes, setNotes] = useState("");
 
-    const handleStepChange = (id: string, step: ProductionStep) => {
+    const handleStepChange = async (id: string, step: ProductionStep) => {
+        const prod = productions.find(p => p.id === id);
+        if (!prod) return;
+
         setProductions(prev => prev.map(p => p.id === id ? { ...p, currentStep: step } : p));
+
+        if (profile) {
+            await logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                `샘플 제작 단계 변경: ${step}`,
+                `${prod.customerName}의 ${prod.productName} 샘플 제작 단계를 [${step}](으)로 변경했습니다.`,
+                "System",
+                { productionId: id, step }
+            );
+        }
     };
 
     return (

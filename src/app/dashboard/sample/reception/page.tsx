@@ -13,6 +13,8 @@ import {
     PauseCircle,
     Undo2
 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { logActivity } from "@/lib/logger";
 import {
     MOCK_INTAKE_DATA,
     SampleIntake,
@@ -158,6 +160,7 @@ function IntakeCard({
 
 // ─── 메인 페이지 ─────────────────────────────────────────────────
 export default function SampleReceptionPage() {
+    const { profile } = useUserRole();
     const [data, setData] = useState<SampleIntake[]>(MOCK_INTAKE_DATA);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("전체");
@@ -167,21 +170,50 @@ export default function SampleReceptionPage() {
     const unhandledCount = data.filter(d => d.receptionStatus === "대기").length;
     const urgentCount = data.filter(d => d.urgency === "긴급" && d.receptionStatus === "대기").length;
 
-    const handleAction = (id: string, status: ReceptionStatus) => {
+    const handleAction = async (id: string, status: ReceptionStatus) => {
         if (status === "반려") {
             setRejectionTarget(id);
             return;
         }
+
+        const item = data.find(d => d.id === id);
+        if (!item) return;
+
         setData(prev => prev.map(d => d.id === id ? { ...d, receptionStatus: status } : d));
+
+        if (profile) {
+            await logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                `샘플 ${status}`,
+                `${item.customerName}의 ${item.productName} 샘플 요청(${item.requestNo})을 ${status} 처리했습니다.`,
+                "System",
+                { requestId: id, status }
+            );
+        }
     };
 
-    const confirmRejection = () => {
+    const confirmRejection = async () => {
         if (!rejectionTarget) return;
+
+        const item = data.find(d => d.id === rejectionTarget);
+        if (!item) return;
+
         setData(prev => prev.map(d =>
             d.id === rejectionTarget
                 ? { ...d, receptionStatus: "반려", rejectionReason: reason }
                 : d
         ));
+
+        if (profile) {
+            await logActivity(
+                { uid: profile.uid, displayName: profile.displayName, team: profile.team },
+                "샘플 반려",
+                `${item.customerName}의 ${item.productName} 샘플 요청(${item.requestNo})을 반려했습니다. (사유: ${reason})`,
+                "System",
+                { requestId: rejectionTarget, status: "반려", reason }
+            );
+        }
+
         setRejectionTarget(null);
         setReason("");
     };
