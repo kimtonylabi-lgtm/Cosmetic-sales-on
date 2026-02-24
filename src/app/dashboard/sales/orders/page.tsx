@@ -1,14 +1,17 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { ChevronUp, ChevronDown, Filter, Search, ArrowRightCircle } from "lucide-react";
+import { ChevronUp, ChevronDown, Filter, Search, ArrowRightCircle, FileEdit, CheckCircle2 } from "lucide-react";
 import { MOCK_ORDERS, Order, OrderStatus } from "@/lib/mock/orders";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { OrderBomBlock, OrderBomBlockMeta, INITIAL_ORDER_BOM_META } from "./OrderBomBlock";
 import { cn } from "@/lib/utils";
+import { useCallback } from "react";
 
 const STATUS_STYLE: Record<OrderStatus, string> = {
     검토중: "bg-slate-500/15 text-slate-400 border-slate-500/30",
@@ -28,6 +31,11 @@ export default function SalesOrdersPage() {
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [sortKey, setSortKey] = useState<SortKey>("confirmedAt");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+    // BOM 관련 상태
+    const [bomSheetOpen, setBomSheetOpen] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [bomMeta, setBomMeta] = useState<OrderBomBlockMeta>(INITIAL_ORDER_BOM_META);
 
     // ─── 정렬 토글 ──────────────────────────────────────────────
     const toggleSort = (key: SortKey) => {
@@ -59,6 +67,23 @@ export default function SalesOrdersPage() {
         sortKey === k
             ? sortDir === "asc" ? <ChevronUp className="w-3 h-3 inline ml-1" /> : <ChevronDown className="w-3 h-3 inline ml-1" />
             : null;
+
+    const openBomSheet = (order: Order) => {
+        setSelectedOrderId(order.id);
+        // 실제 앱에서는 API로 데이터를 가져오겠지만, 여기서는 초기화
+        setBomMeta({
+            ...INITIAL_ORDER_BOM_META,
+            orderNo: order.orderNo,
+            clientName: order.customerName,
+            productNameTaesung: order.productName,
+            orderQty: order.amount.toString() // 예시로 소계 사용
+        });
+        setBomSheetOpen(true);
+    };
+
+    const updateBomMeta = useCallback(<K extends keyof OrderBomBlockMeta>(key: K, value: OrderBomBlockMeta[K]) => {
+        setBomMeta((prev) => ({ ...prev, [key]: value }));
+    }, []);
 
     return (
         <div className="space-y-6 pb-10">
@@ -134,15 +159,24 @@ export default function SalesOrdersPage() {
                                 </TableCell>
                                 <TableCell className="text-sm text-slate-400">{o.deliveryDue}</TableCell>
                                 <TableCell className="text-right">
-                                    {o.status === "검토중" && (
+                                    <div className="flex items-center justify-end gap-2">
                                         <Button
-                                            size="sm" variant="outline"
-                                            onClick={() => confirmOrder(o.id)}
-                                            className="gap-1 text-xs border-ocean-teal/30 text-ocean-teal hover:bg-ocean-teal/10"
+                                            size="sm" variant="ghost"
+                                            onClick={() => openBomSheet(o)}
+                                            className="gap-1 text-xs text-slate-500 hover:text-ocean-teal"
                                         >
-                                            <ArrowRightCircle className="w-3.5 h-3.5" /> 수주 확정
+                                            <FileEdit className="w-3.5 h-3.5" /> 발주상세
                                         </Button>
-                                    )}
+                                        {o.status === "검토중" && (
+                                            <Button
+                                                size="sm" variant="outline"
+                                                onClick={() => confirmOrder(o.id)}
+                                                className="gap-1 text-xs border-ocean-teal/30 text-ocean-teal hover:bg-ocean-teal/10"
+                                            >
+                                                <ArrowRightCircle className="w-3.5 h-3.5" /> 수주 확정
+                                            </Button>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -156,6 +190,33 @@ export default function SalesOrdersPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* 발주 상세 Sheet (수주관리 전용) */}
+            <Sheet open={bomSheetOpen} onOpenChange={setBomSheetOpen}>
+                <SheetContent side="right" className="w-full max-w-3xl sm:max-w-3xl p-0 flex flex-col">
+                    <SheetHeader className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-teal-50 to-slate-50 dark:from-teal-950/30 dark:to-slate-900">
+                        <SheetTitle className="flex items-center gap-2.5 text-base font-bold">
+                            <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center">
+                                <FileEdit className="w-4 h-4 text-teal-600" />
+                            </div>
+                            발주 상세 입력
+                            <span className="text-xs font-normal text-slate-400 ml-1">— BOM / 특이사항 / 작업사진</span>
+                        </SheetTitle>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto px-6 py-4">
+                        <OrderBomBlock meta={bomMeta} onChange={updateBomMeta} />
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 bg-slate-50 dark:bg-slate-900 flex gap-3">
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setBomSheetOpen(false)}>취소</Button>
+                        <Button type="button" className="flex-1 bg-ocean-teal hover:bg-teal-700 text-white font-bold gap-2" onClick={() => {
+                            alert("발주 상세가 저장되었습니다.");
+                            setBomSheetOpen(false);
+                        }}>
+                            <CheckCircle2 className="w-4 h-4" /> 발주 상세 저장
+                        </Button>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

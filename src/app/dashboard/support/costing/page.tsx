@@ -19,7 +19,9 @@ import {
     TrendingUp,
     AlertCircle,
     BarChart3,
+    Calculator as CalcIcon
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
     MATERIAL_TREND_DATA,
     COST_BREAKDOWN_DATA,
@@ -126,7 +128,11 @@ function CostRow({ item, index }: { item: CostBreakdown; index: number }) {
 }
 
 // ─── 메인 페이지 ─────────────────────────────────────────────────
+import { DetailedCostCalcSheet } from "./DetailedCostCalcSheet";
+import { Calculator, Plus } from "lucide-react";
+
 export default function SupportCostingPage() {
+    const [isCalcOpen, setIsCalcOpen] = useState(false);
     const lossCount = COST_BREAKDOWN_DATA.filter((d) => d.marginRate < 0).length;
 
     return (
@@ -141,14 +147,22 @@ export default function SupportCostingPage() {
                         원부자재 가격 변동 추이와 제품별 마진율을 분석합니다.
                     </p>
                 </div>
-                {lossCount > 0 && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
-                        <AlertCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                            적자 제품 {lossCount}건 감지
-                        </span>
-                    </div>
-                )}
+                <div className="flex items-center gap-3">
+                    {lossCount > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                            <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                                적자 제품 {lossCount}건 감지
+                            </span>
+                        </div>
+                    )}
+                    <Button
+                        onClick={() => setIsCalcOpen(true)}
+                        className="bg-ocean-teal hover:bg-ocean-dark gap-2"
+                    >
+                        <Plus className="w-4 h-4" /> 신규 원가 산출
+                    </Button>
+                </div>
             </div>
 
             {/* 차트 카드 */}
@@ -284,6 +298,15 @@ export default function SupportCostingPage() {
                     </div>
                 )}
             </motion.div>
+
+            <DetailedCostCalcSheet
+                open={isCalcOpen}
+                onOpenChange={setIsCalcOpen}
+                onApply={(data) => {
+                    console.log("Calculated Cost Applied:", data);
+                    alert(`신규 산출 단가: ${data.unitPrice.toLocaleString()}원이 적용되었습니다.`);
+                }}
+            />
         </div>
     );
 }

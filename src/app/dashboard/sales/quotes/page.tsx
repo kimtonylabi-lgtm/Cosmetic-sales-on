@@ -2,9 +2,8 @@
 
 import React, { useState, useCallback } from "react";
 import {
-    Plus, Trash2, FileText, Eye, Printer, FileEdit, CheckCircle2, ArrowRight, Calculator
+    Plus, Trash2, FileText, Eye, Printer, FileEdit, CheckCircle2, ArrowRight
 } from "lucide-react";
-import { QuoteDetailCalcSheet } from "./QuoteDetailCalcSheet";
 import { MOCK_QUOTES, Quote, QuoteItem, PostProcessing, QuoteStatus } from "@/lib/mock/quotes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { cn } from "@/lib/utils";
 import { useBomMaster } from "@/lib/hooks/useBomMaster";
-import { QuoteBomBlock, QuoteBomBlockMeta, INITIAL_QUOTE_BOM_META } from "./QuoteBomBlock";
 
 // ─── 유틸 ────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<QuoteStatus, string> = {
@@ -108,12 +105,12 @@ function createEmptyItem(): QuoteItem {
 
 // ─── 품목 행 컴포넌트 ─────────────────────────────────────────────
 function QuoteFormRow({
-    item, onChange, onDelete, onCalculate,
+    item, onChange, onDelete,
 }: {
     item: QuoteItem;
+    filterBy?: string; // 추가된 필드 대응
     onChange: (updated: QuoteItem) => void;
     onDelete: () => void;
-    onCalculate: () => void;
 }) {
     const { getSuggestions } = useBomMaster();
 
@@ -164,17 +161,7 @@ function QuoteFormRow({
             </td>
             {/* 단가 */}
             <td className="py-1.5 pr-1.5 min-w-[120px]">
-                <div className="flex items-center gap-1">
-                    <PriceCell value={item.unitPrice} onChange={(v) => set("unitPrice", v)} placeholder="단가" className="flex-1" />
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-primary shrink-0"
-                        onClick={onCalculate}
-                    >
-                        <Calculator className="w-4 h-4" />
-                    </Button>
-                </div>
+                <PriceCell value={item.unitPrice} onChange={(v) => set("unitPrice", v)} placeholder="단가" className="w-full" />
             </td>
             {/* 삭제 */}
             <td className="py-1.5 text-center">
@@ -259,32 +246,6 @@ function QuotePreview({ quote }: { quote: Quote }) {
     );
 }
 
-// ─── 발주 상세 배지 ───────────────────────────────────────────────
-function BomSpecSummary({ meta, onEdit }: { meta: QuoteBomBlockMeta; onEdit: () => void }) {
-    const filledRows = meta.bomRows.filter((r) => r.partName.trim()).length;
-    const hasFilled = filledRows > 0 || meta.clientName || meta.productNameTaesung;
-    return (
-        <div onClick={onEdit} className={cn(
-            "rounded-xl border-2 p-3 flex items-center justify-between gap-3 cursor-pointer group transition-all",
-            hasFilled
-                ? "border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-500"
-                : "border-teal-300/60 bg-teal-50/50 dark:bg-teal-950/20 hover:border-teal-400 border-dashed"
-        )}>
-            <div className="flex items-center gap-2.5">
-                {hasFilled ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> : <FileEdit className="w-5 h-5 text-teal-400 shrink-0" />}
-                <div>
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{hasFilled ? "발주 상세 작성됨" : "발주 상세 미작성"}</p>
-                    <p className="text-[11px] text-slate-500">
-                        {hasFilled ? `BOM ${filledRows}개 · 발주처: ${meta.clientName || "미입력"} · 사진 ${meta.workPhotos.length}장` : "클릭하여 발주 BOM 상세 입력"}
-                    </p>
-                </div>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-teal-600 dark:text-teal-300 group-hover:gap-2 transition-all">
-                {hasFilled ? "수정" : "입력"}<ArrowRight className="w-3.5 h-3.5" />
-            </div>
-        </div>
-    );
-}
 
 // ─── MOQ 입력 ─────────────────────────────────────────────────────
 function MoqInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -314,13 +275,9 @@ export default function SalesQuotesPage() {
     const [validUntil, setValidUntil] = useState("");
     const [note, setNote] = useState("");
     const [editItems, setEditItems] = useState<QuoteItem[]>([createEmptyItem()]);
-    const [bomSheetOpen, setBomSheetOpen] = useState(false);
-    const [bomMeta, setBomMeta] = useState<QuoteBomBlockMeta>(INITIAL_QUOTE_BOM_META);
-    const [rowToCalculate, setRowToCalculate] = useState<string | null>(null);
 
     const openCreate = () => {
         setEditItems([createEmptyItem()]);
-        setBomMeta({ ...INITIAL_QUOTE_BOM_META, orderDate: new Date().toISOString().slice(0, 10) });
         setCustomerName(""); setProductName(""); setMoq(""); setValidUntil(""); setNote("");
         setIsCreateOpen(true);
     };
@@ -330,24 +287,12 @@ export default function SalesQuotesPage() {
         setEditItems((p) => p.map((i) => i.id === id ? updated : i));
     const deleteRow = (id: string) => setEditItems((p) => p.filter((i) => i.id !== id));
 
-    const handleApplyCalculation = (data: { unitPrice: number; material: string }) => {
-        if (!rowToCalculate) return;
-        setEditItems(prev => prev.map(item =>
-            item.id === rowToCalculate
-                ? { ...item, unitPrice: data.unitPrice, material: data.material }
-                : item
-        ));
-        setRowToCalculate(null);
-    };
 
     const priceTotal = calcTotal(editItems);
 
-    const updateBomMeta = useCallback(<K extends keyof QuoteBomBlockMeta>(key: K, value: QuoteBomBlockMeta[K]) => {
-        setBomMeta((prev) => ({ ...prev, [key]: value }));
-    }, []);
 
     const handleSave = () => {
-        bulkSaveToMaster({ 발주처: [bomMeta.clientName], 입고처: [bomMeta.receivingPlace], 제품명: [productName, bomMeta.productNameTaesung, bomMeta.productNameClient] });
+        bulkSaveToMaster({ 발주처: [customerName], 제품명: [productName] });
         editItems.forEach((item) => {
             bulkSaveToMaster({
                 부품명: [item.partName], 원료명: [item.material], 색상명: [item.color],
@@ -356,13 +301,10 @@ export default function SalesQuotesPage() {
                 인쇄명: [item.postProcessing.printing],
             });
         });
-        bomMeta.bomRows.forEach((row) => {
-            bulkSaveToMaster({ 부품명: [row.partName], 원료명: [row.materialName], 색상명: [row.color], 증착명: [row.deposition], 인쇄명: [row.printing] });
-        });
         const newQuote: Quote = {
             id: `q${Date.now()}`,
             quoteNo: `QT-2026-${String(quotes.length + 43).padStart(4, "0")}`,
-            customerName: customerName || bomMeta.clientName || "미입력",
+            customerName: customerName || "미입력",
             productName, moq, status: "작성중", items: editItems, note,
             createdAt: new Date().toISOString().slice(0, 10), validUntil,
         };
@@ -439,29 +381,6 @@ export default function SalesQuotesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* 좌측 BOM Sheet */}
-            <Sheet open={bomSheetOpen} onOpenChange={setBomSheetOpen}>
-                <SheetContent side="left" className="w-full max-w-3xl sm:max-w-3xl p-0 flex flex-col">
-                    <SheetHeader className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-teal-50 to-slate-50 dark:from-teal-950/30 dark:to-slate-900">
-                        <SheetTitle className="flex items-center gap-2.5 text-base font-bold">
-                            <div className="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center">
-                                <FileEdit className="w-4 h-4 text-teal-600" />
-                            </div>
-                            발주 상세 입력
-                            <span className="text-xs font-normal text-slate-400 ml-1">— BOM / 특이사항 / 작업사진</span>
-                        </SheetTitle>
-                    </SheetHeader>
-                    <div className="flex-1 overflow-y-auto px-6 py-4">
-                        <QuoteBomBlock meta={bomMeta} onChange={updateBomMeta} />
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 bg-slate-50 dark:bg-slate-900 flex gap-3">
-                        <Button type="button" variant="outline" className="flex-1" onClick={() => setBomSheetOpen(false)}>취소</Button>
-                        <Button type="button" className="flex-1 bg-ocean-teal hover:bg-teal-700 text-white font-bold gap-2" onClick={() => setBomSheetOpen(false)}>
-                            <CheckCircle2 className="w-4 h-4" /> 발주 상세 저장
-                        </Button>
-                    </div>
-                </SheetContent>
-            </Sheet>
 
             {/* 새 견적서 Dialog */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -533,7 +452,6 @@ export default function SalesQuotesPage() {
                                                 item={item}
                                                 onChange={(updated) => updateRow(item.id, updated)}
                                                 onDelete={() => deleteRow(item.id)}
-                                                onCalculate={() => setRowToCalculate(item.id)}
                                             />
                                         ))}
                                     </tbody>
@@ -559,16 +477,6 @@ export default function SalesQuotesPage() {
                             <Input className="mt-1" placeholder="특이사항, 조건 등" value={note} onChange={(e) => setNote(e.target.value)} />
                         </div>
 
-                        {/* 발주 상세 BOM */}
-                        <div className="space-y-2 border-t border-slate-200 dark:border-slate-700 pt-4">
-                            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">발주 상세 (BOM / 작업사진)</p>
-                            <BomSpecSummary meta={bomMeta} onEdit={() => setBomSheetOpen(true)} />
-                            <Button type="button" variant="outline"
-                                className="w-full border-teal-300 text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30 font-semibold gap-2 h-9"
-                                onClick={() => setBomSheetOpen(true)}>
-                                <FileEdit className="w-3.5 h-3.5" /> 발주 상세 전체 입력 →
-                            </Button>
-                        </div>
 
                         {/* 저장 */}
                         <div className="flex justify-end pt-2">
@@ -579,12 +487,6 @@ export default function SalesQuotesPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-            <QuoteDetailCalcSheet
-                open={!!rowToCalculate}
-                onOpenChange={(open) => !open && setRowToCalculate(null)}
-                onApply={handleApplyCalculation}
-                initialData={{ moq }}
-            />
         </div>
     );
 }

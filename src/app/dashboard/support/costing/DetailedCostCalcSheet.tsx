@@ -23,7 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { getAllDocuments, MasterRawMaterial, MasterInjectionRate } from "@/lib/firebase/db";
 import { Calculator, Save, AlertCircle } from "lucide-react";
 
-interface QuoteDetailCalcSheetProps {
+interface DetailedCostCalcSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onApply: (data: { unitPrice: number; material: string }) => void;
@@ -33,7 +33,7 @@ interface QuoteDetailCalcSheetProps {
     };
 }
 
-export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData }: QuoteDetailCalcSheetProps) {
+export function DetailedCostCalcSheet({ open, onOpenChange, onApply, initialData }: DetailedCostCalcSheetProps) {
     // ─── 마스터 데이터 상태 ──────────────────────────────────────────
     const [rawMaterials, setRawMaterials] = useState<MasterRawMaterial[]>([]);
     const [injectionRates, setInjectionRates] = useState<MasterInjectionRate[]>([]);

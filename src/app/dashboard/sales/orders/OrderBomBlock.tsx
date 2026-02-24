@@ -8,7 +8,8 @@ import { useBomMaster, BomMasterCategory } from "@/lib/hooks/useBomMaster";
 import { Textarea } from "@/components/ui/textarea";
 
 // ─── BOM 행 타입 ─────────────────────────────────────────────────
-export interface QuoteBomRow {
+// ─── BOM 행 타입 ─────────────────────────────────────────────────
+export interface OrderBomRow {
     id: string;
     partName: string;       // 부품명
     materialName: string;   // 원료명
@@ -17,7 +18,7 @@ export interface QuoteBomRow {
     printing: string;       // 인쇄 및 박
 }
 
-function createEmptyBomRow(): QuoteBomRow {
+function createEmptyBomRow(): OrderBomRow {
     return {
         id: Math.random().toString(36).slice(2),
         partName: "",
@@ -28,7 +29,7 @@ function createEmptyBomRow(): QuoteBomRow {
     };
 }
 
-export const DEFAULT_QUOTE_BOM_ROWS: QuoteBomRow[] = Array.from({ length: 8 }, createEmptyBomRow);
+export const DEFAULT_ORDER_BOM_ROWS: OrderBomRow[] = Array.from({ length: 8 }, createEmptyBomRow);
 
 // ─── 테이블 헤더/데이터 셀 래퍼 ──────────────────────────────────
 function Td({
@@ -216,7 +217,8 @@ function WorkPhotoUploader({
 }
 
 // ─── 발주 상세 블록 Props ─────────────────────────────────────────
-export interface QuoteBomBlockMeta {
+// ─── 발주 상세 블록 Props ─────────────────────────────────────────
+export interface OrderBomBlockMeta {
     orderDate: string;
     orderNo: string;
     clientName: string;
@@ -232,11 +234,11 @@ export interface QuoteBomBlockMeta {
     hasFilm: "있음" | "없음" | "";
     hasLava: "있음" | "없음" | "";
     specialNote: string;
-    bomRows: QuoteBomRow[];
+    bomRows: OrderBomRow[];
     workPhotos: string[];  // base64 dataUrl 배열
 }
 
-export const INITIAL_QUOTE_BOM_META: QuoteBomBlockMeta = {
+export const INITIAL_ORDER_BOM_META: OrderBomBlockMeta = {
     orderDate: new Date().toISOString().slice(0, 10),
     orderNo: "",
     clientName: "",
@@ -252,21 +254,21 @@ export const INITIAL_QUOTE_BOM_META: QuoteBomBlockMeta = {
     hasFilm: "",
     hasLava: "",
     specialNote: "",
-    bomRows: DEFAULT_QUOTE_BOM_ROWS,
+    bomRows: DEFAULT_ORDER_BOM_ROWS,
     workPhotos: [],
 };
 
 // ─── 메인 발주 상세 블록 컴포넌트 ────────────────────────────────
-interface QuoteBomBlockProps {
-    meta: QuoteBomBlockMeta;
-    onChange: <K extends keyof QuoteBomBlockMeta>(key: K, value: QuoteBomBlockMeta[K]) => void;
+interface OrderBomBlockProps {
+    meta: OrderBomBlockMeta;
+    onChange: <K extends keyof OrderBomBlockMeta>(key: K, value: OrderBomBlockMeta[K]) => void;
 }
 
-export function QuoteBomBlock({ meta, onChange }: QuoteBomBlockProps) {
+export function OrderBomBlock({ meta, onChange }: OrderBomBlockProps) {
     const { getSuggestions } = useBomMaster();
 
     // BOM 행 업데이트
-    const updateBomRow = (idx: number, field: keyof QuoteBomRow, val: string) => {
+    const updateBomRow = (idx: number, field: keyof OrderBomRow, val: string) => {
         const next = meta.bomRows.map((row, i) =>
             i === idx ? { ...row, [field]: val } : row
         );
