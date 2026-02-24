@@ -27,7 +27,10 @@ interface QuoteDetailCalcSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onApply: (data: { unitPrice: number; material: string }) => void;
-    initialData?: any;
+    initialData?: {
+        moq?: string;
+        [key: string]: any;
+    };
 }
 
 export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData }: QuoteDetailCalcSheetProps) {
@@ -42,6 +45,14 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
     const [sprue, setSprue] = useState<string>("");
     const [cycleTime, setCycleTime] = useState<string>("");
     const [selectedTonnage, setSelectedTonnage] = useState<string>("");
+    const [quantity, setQuantity] = useState<string>("10,000"); // 기본 수량
+
+    // 초기 데이터 수량 연동
+    useEffect(() => {
+        if (initialData?.moq) {
+            setQuantity(initialData.moq);
+        }
+    }, [initialData]);
 
     // 콤마 포맷팅 헬퍼
     const formatNumber = (val: string | number) => {
@@ -61,13 +72,16 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
         coating: { active: false, price: "" },
         printing: { active: false, price: "" },
         assembly: { active: false, price: "" },
+        subMaterial: { active: false, price: "" }, // 부자재 추가
         ultrasonic: { active: false, price: "" },
     });
 
     const [logistics, setLogistics] = useState({
         packaging: "",
-        transport: "",
-        overheadRate: 10, // 기본 10%
+        transport: "300,000", // 기본 국내 운반비
+        transportType: "국내" as "국내" | "수출",
+        overheadRate: 20, // 기본 20%
+        profitRate: 15,   // 기본 15%
     });
 
     // 계산 결과
@@ -77,6 +91,8 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
         processCost: 0,
         logisticsCost: 0,
         subTotal: 0,
+        overheadCost: 0,
+        profitCost: 0,
         totalPrice: 0
     });
 
@@ -106,26 +122,35 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
         const ct = Number(cycleTime) || 0;
 
         // 1. 원재료비 = (무게 + (스프루/캐비티)) * 단가 * (1 + 0.07)
-        // 단가 단위: 원/kg 이면 무게(g)를 kg으로 변환 (/1000)
         const materialCost = ((w + (s / c)) / 1000) * mPrice * 1.07;
 
         // 2. 사출비 = (임률 * CT) / 캐비티
         const injectionCost = (iRate * ct) / c;
 
         // 3. 후가공비 (각 공정별 로스율 반영)
-        // 증착: 10%, 코팅: 5%, 인쇄: 3%, 조립: 3%, 초음파: 10%
         let pCost = 0;
         if (processSettings.deposition.active) pCost += (Number(processSettings.deposition.price) || 0) * 1.10;
         if (processSettings.coating.active) pCost += (Number(processSettings.coating.price) || 0) * 1.05;
         if (processSettings.printing.active) pCost += (Number(processSettings.printing.price) || 0) * 1.03;
         if (processSettings.assembly.active) pCost += (Number(processSettings.assembly.price) || 0) * 1.03;
+        if (processSettings.subMaterial.active) pCost += (Number(processSettings.subMaterial.price) || 0);
         if (processSettings.ultrasonic.active) pCost += (Number(processSettings.ultrasonic.price) || 0) * 1.10;
 
-        // 4. 물류비
-        const logiCost = (Number(logistics.packaging) || 0) + (Number(logistics.transport) || 0);
+        // 4. 물류비 (운반비를 수량으로 나눔)
+        const qty = Number(parseNumber(quantity)) || 1;
+        const totalTransport = Number(parseNumber(logistics.transport)) || 0;
+        const unitTransport = totalTransport / qty;
+        const logiCost = (Number(logistics.packaging) || 0) + unitTransport;
 
         const subTotal = materialCost + injectionCost + pCost + logiCost;
-        const total = subTotal * (1 + (logistics.overheadRate / 100));
+
+        // 5. 일반관리비 = 소계 * 관리비율
+        const overheadCost = subTotal * (logistics.overheadRate / 100);
+
+        // 6. 영업이익 = (소계 + 일반관리비) * 영업이익률
+        const profitCost = (subTotal + overheadCost) * (logistics.profitRate / 100);
+
+        const total = subTotal + overheadCost + profitCost;
 
         setResults({
             materialCost,
@@ -133,9 +158,11 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
             processCost: pCost,
             logisticsCost: logiCost,
             subTotal,
+            overheadCost,
+            profitCost,
             totalPrice: total
         });
-    }, [selectedMaterial, weight, cavity, sprue, cycleTime, selectedTonnage, processSettings, logistics, rawMaterials, injectionRates]);
+    }, [selectedMaterial, weight, cavity, sprue, cycleTime, selectedTonnage, processSettings, logistics, rawMaterials, injectionRates, quantity]);
 
     const handleApply = () => {
         if (!selectedMaterial || !weight) {
@@ -143,11 +170,10 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
             return;
         }
 
-        // 재질명 추출 (예: ABS SD0170 -> ABS)
         const baseMaterial = selectedMaterial.split(" ")[0];
 
         onApply({
-            unitPrice: Math.round(results.totalPrice * 100) / 100, // 소수점 2자리
+            unitPrice: Math.round(results.totalPrice * 100) / 100,
             material: baseMaterial
         });
         onOpenChange(false);
@@ -202,6 +228,18 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                                     />
                                 </div>
                                 <div className="space-y-2">
+                                    <Label>수량 (MOQ)</Label>
+                                    <Input
+                                        type="text"
+                                        value={formatNumber(quantity)}
+                                        onChange={(e) => setQuantity(parseNumber(e.target.value))}
+                                        placeholder="10,000"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
                                     <Label>캐비티 수 (C)</Label>
                                     <Input
                                         type="text"
@@ -210,9 +248,6 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                                         placeholder="1"
                                     />
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>스프루 무게 (g)</Label>
                                     <Input
@@ -222,6 +257,9 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                                         placeholder="0.00"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Cycle Time (sec)</Label>
                                     <Input
@@ -231,20 +269,19 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                                         placeholder="0.0"
                                     />
                                 </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>사출기 톤수 (T)</Label>
-                                <Select value={selectedTonnage} onValueChange={setSelectedTonnage}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="톤수 선택" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {injectionRates.map(r => (
-                                            <SelectItem key={r.id} value={r.tonnage}>{r.tonnage}T</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="space-y-2">
+                                    <Label>사출기 톤수 (T)</Label>
+                                    <Select value={selectedTonnage} onValueChange={setSelectedTonnage}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="톤수 선택" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {injectionRates.map(r => (
+                                                <SelectItem key={r.id} value={r.tonnage}>{r.tonnage}T</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -263,6 +300,7 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                                 { id: "coating", label: "코팅 (Loss 5%)" },
                                 { id: "printing", label: "인쇄 (Loss 3%)" },
                                 { id: "assembly", label: "조립 (Loss 3%)" },
+                                { id: "subMaterial", label: "부자재" },
                                 { id: "ultrasonic", label: "초음파 (Loss 10%)" },
                             ].map((proc) => (
                                 <div key={proc.id} className="grid grid-cols-[1fr_120px] gap-2 items-center">
@@ -302,40 +340,75 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                             물류 및 관리비
                         </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>포장비 (원)</Label>
-                                <Input
-                                    type="text"
-                                    value={formatNumber(logistics.packaging)}
-                                    onChange={(e) => setLogistics({ ...logistics, packaging: parseNumber(e.target.value) })}
-                                    placeholder="0.00"
-                                />
+                        <div className="space-y-3">
+                            <div className="flex gap-2 p-1 bg-muted rounded-md mb-2">
+                                <Button
+                                    type="button"
+                                    variant={logistics.transportType === "국내" ? "default" : "ghost"}
+                                    size="sm"
+                                    className="flex-1 h-7 text-xs"
+                                    onClick={() => setLogistics({ ...logistics, transportType: "국내", transport: "300,000" })}
+                                >
+                                    국내
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={logistics.transportType === "수출" ? "default" : "ghost"}
+                                    size="sm"
+                                    className="flex-1 h-7 text-xs"
+                                    onClick={() => setLogistics({ ...logistics, transportType: "수출", transport: "400,000" })}
+                                >
+                                    수출
+                                </Button>
                             </div>
-                            <div className="space-y-2">
-                                <Label>운반비 (원)</Label>
-                                <Input
-                                    type="text"
-                                    value={formatNumber(logistics.transport)}
-                                    onChange={(e) => setLogistics({ ...logistics, transport: parseNumber(e.target.value) })}
-                                    placeholder="0.00"
-                                />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>포장비 (원)</Label>
+                                    <Input
+                                        type="text"
+                                        value={formatNumber(logistics.packaging)}
+                                        onChange={(e) => setLogistics({ ...logistics, packaging: parseNumber(e.target.value) })}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>운반비 (원)</Label>
+                                    <Input
+                                        type="text"
+                                        value={formatNumber(logistics.transport)}
+                                        onChange={(e) => setLogistics({ ...logistics, transport: parseNumber(e.target.value) })}
+                                        placeholder="0.00"
+                                    />
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="flex justify-between">
-                                <span>일반 관리비율 (%)</span>
-                                <span className="text-primary font-bold">{logistics.overheadRate}%</span>
-                            </Label>
-                            <Input
-                                type="range"
-                                min="0"
-                                max="30"
-                                step="1"
-                                value={logistics.overheadRate}
-                                onChange={(e) => setLogistics({ ...logistics, overheadRate: parseInt(e.target.value) })}
-                                className="h-6"
-                            />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="flex justify-between">
+                                    <span>관리비율 (%)</span>
+                                    <span className="text-primary font-bold">{logistics.overheadRate}%</span>
+                                </Label>
+                                <Input
+                                    type="number"
+                                    value={logistics.overheadRate}
+                                    onChange={(e) => setLogistics({ ...logistics, overheadRate: parseInt(e.target.value) || 0 })}
+                                    className="h-8"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="flex justify-between">
+                                    <span>영업이익률 (%)</span>
+                                    <span className="text-primary font-bold">{logistics.profitRate}%</span>
+                                </Label>
+                                <Input
+                                    type="number"
+                                    value={logistics.profitRate}
+                                    onChange={(e) => setLogistics({ ...logistics, profitRate: parseInt(e.target.value) || 0 })}
+                                    className="h-8"
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -354,12 +427,20 @@ export function QuoteDetailCalcSheet({ open, onOpenChange, onApply, initialData 
                             <span>₩{results.processCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>물류비 합계</span>
+                            <span>물류비 합계 (단위 운반비 포함)</span>
                             <span>₩{results.logisticsCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between text-xs font-semibold py-1 border-t border-border/50">
-                            <span>소계 (관리비 제외)</span>
+                            <span>제조원가 소계</span>
                             <span>₩{results.subTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>일반관리비 ({logistics.overheadRate}%)</span>
+                            <span>₩{results.overheadCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-primary/80 font-medium">
+                            <span>영업이익 ({logistics.profitRate}%)</span>
+                            <span>₩{results.profitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                         </div>
                         <Separator className="my-1" />
                         <div className="flex justify-between font-bold text-lg text-primary">

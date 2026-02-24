@@ -583,6 +583,7 @@ export default function SalesQuotesPage() {
                 open={!!rowToCalculate}
                 onOpenChange={(open) => !open && setRowToCalculate(null)}
                 onApply={handleApplyCalculation}
+                initialData={{ moq }}
             />
         </div>
     );
