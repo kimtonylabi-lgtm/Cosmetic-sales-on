@@ -17,6 +17,38 @@ import { db } from "./config";
 export type UserRole = 'Admin' | 'Member';
 export type UserTeam = 'Sales' | 'Sample' | 'Support';
 
+// ─── 마스터 데이터 타입 ──────────────────────────────────────────
+export interface MasterRawMaterial {
+    id?: string;
+    name: string;      // 원재료명
+    vendor: string;    // 제조사
+    price: number;     // 단가 (원/kg)
+    updatedAt?: Timestamp;
+}
+
+export interface MasterSubMaterial {
+    id?: string;
+    name: string;      // 부자재명
+    spec?: string;     // 규격
+    price: number;     // 단가 (원)
+    updatedAt?: Timestamp;
+}
+
+export interface MasterPumpEngine {
+    id?: string;
+    name: string;      // 엔진명
+    spec?: string;     // 규격
+    price: number;     // 단가 (원)
+    updatedAt?: Timestamp;
+}
+
+export interface MasterInjectionRate {
+    id?: string;
+    tonnage: string;   // 톤수 (T)
+    rate: number;      // 임률 (원/sec 또는 원/hr 등 사용자 입력값)
+    updatedAt?: Timestamp;
+}
+
 export const TEAM_LABELS: Record<UserTeam, string> = {
     Sales: '영업팀',
     Sample: '샘플팀',
@@ -70,16 +102,28 @@ export interface Interaction {
 }
 
 // ─── 범용 CRUD 헬퍼 ──────────────────────────────────────────────
+import { addDoc } from "firebase/firestore";
+
 export const createDocument = async <T extends object>(
     collectionName: string,
-    id: string,
-    data: T
+    data: T,
+    id?: string
 ) => {
-    await setDoc(doc(db, collectionName, id), {
-        ...data,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-    });
+    if (id) {
+        await setDoc(doc(db, collectionName, id), {
+            ...data,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+        return id;
+    } else {
+        const docRef = await addDoc(collection(db, collectionName), {
+            ...data,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+        return docRef.id;
+    }
 };
 
 export const getDocument = async <T>(
@@ -103,9 +147,18 @@ export const updateDocument = async <T extends object>(
     });
 };
 
+export const deleteDocument = async (
+    collectionName: string,
+    id: string
+) => {
+    const docRef = doc(db, collectionName, id);
+    await deleteDoc(docRef);
+};
+
 export const getAllDocuments = async <T>(
     collectionName: string
 ): Promise<T[]> => {
     const querySnapshot = await getDocs(collection(db, collectionName));
     return querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() } as T));
 };
+

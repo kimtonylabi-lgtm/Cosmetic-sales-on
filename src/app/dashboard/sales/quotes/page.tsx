@@ -2,8 +2,9 @@
 
 import React, { useState, useCallback } from "react";
 import {
-    Plus, Trash2, FileText, Eye, Printer, FileEdit, CheckCircle2, ArrowRight,
+    Plus, Trash2, FileText, Eye, Printer, FileEdit, CheckCircle2, ArrowRight, Calculator
 } from "lucide-react";
+import { QuoteDetailCalcSheet } from "./QuoteDetailCalcSheet";
 import { MOCK_QUOTES, Quote, QuoteItem, PostProcessing, QuoteStatus } from "@/lib/mock/quotes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,11 +108,12 @@ function createEmptyItem(): QuoteItem {
 
 // ─── 품목 행 컴포넌트 ─────────────────────────────────────────────
 function QuoteFormRow({
-    item, onChange, onDelete,
+    item, onChange, onDelete, onCalculate,
 }: {
     item: QuoteItem;
     onChange: (updated: QuoteItem) => void;
     onDelete: () => void;
+    onCalculate: () => void;
 }) {
     const { getSuggestions } = useBomMaster();
 
@@ -161,8 +163,18 @@ function QuoteFormRow({
                 <PriceCell value={item.postProcessing.postPrice} onChange={(v) => setPost("postPrice", v)} placeholder="후가공 단가" />
             </td>
             {/* 단가 */}
-            <td className="py-1.5 pr-1.5 min-w-[90px]">
-                <PriceCell value={item.unitPrice} onChange={(v) => set("unitPrice", v)} placeholder="단가" />
+            <td className="py-1.5 pr-1.5 min-w-[120px]">
+                <div className="flex items-center gap-1">
+                    <PriceCell value={item.unitPrice} onChange={(v) => set("unitPrice", v)} placeholder="단가" className="flex-1" />
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-primary shrink-0"
+                        onClick={onCalculate}
+                    >
+                        <Calculator className="w-4 h-4" />
+                    </Button>
+                </div>
             </td>
             {/* 삭제 */}
             <td className="py-1.5 text-center">
@@ -304,6 +316,7 @@ export default function SalesQuotesPage() {
     const [editItems, setEditItems] = useState<QuoteItem[]>([createEmptyItem()]);
     const [bomSheetOpen, setBomSheetOpen] = useState(false);
     const [bomMeta, setBomMeta] = useState<QuoteBomBlockMeta>(INITIAL_QUOTE_BOM_META);
+    const [rowToCalculate, setRowToCalculate] = useState<string | null>(null);
 
     const openCreate = () => {
         setEditItems([createEmptyItem()]);
@@ -316,6 +329,16 @@ export default function SalesQuotesPage() {
     const updateRow = (id: string, updated: QuoteItem) =>
         setEditItems((p) => p.map((i) => i.id === id ? updated : i));
     const deleteRow = (id: string) => setEditItems((p) => p.filter((i) => i.id !== id));
+
+    const handleApplyCalculation = (data: { unitPrice: number; material: string }) => {
+        if (!rowToCalculate) return;
+        setEditItems(prev => prev.map(item =>
+            item.id === rowToCalculate
+                ? { ...item, unitPrice: data.unitPrice, material: data.material }
+                : item
+        ));
+        setRowToCalculate(null);
+    };
 
     const priceTotal = calcTotal(editItems);
 
@@ -510,6 +533,7 @@ export default function SalesQuotesPage() {
                                                 item={item}
                                                 onChange={(updated) => updateRow(item.id, updated)}
                                                 onDelete={() => deleteRow(item.id)}
+                                                onCalculate={() => setRowToCalculate(item.id)}
                                             />
                                         ))}
                                     </tbody>
@@ -555,6 +579,11 @@ export default function SalesQuotesPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+            <QuoteDetailCalcSheet
+                open={!!rowToCalculate}
+                onOpenChange={(open) => !open && setRowToCalculate(null)}
+                onApply={handleApplyCalculation}
+            />
         </div>
     );
 }
