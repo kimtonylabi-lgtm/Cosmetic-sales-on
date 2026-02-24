@@ -37,7 +37,7 @@ export const signUpWithEmail = async (
     const role: UserRole = adminEmails.includes(email.toLowerCase()) ? 'Admin' : 'Member';
 
     // Firestore users 컬렉션에 프로필 저장
-    await createDocument("users", user.uid, {
+    await createDocument("users", {
         uid: user.uid,
         email: user.email,
         displayName,
@@ -45,7 +45,7 @@ export const signUpWithEmail = async (
         role,
         team,
         isDeptHead: false,
-    });
+    }, user.uid);
 
     return user;
 };
